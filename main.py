@@ -64,12 +64,8 @@ def myMouseMoveEvent(event):
         dy = event.pos().y() - last_pos.y()
         pos.setX(pos.x() - dx * sensitivity)
         pos.setY(pos.y() + dy * sensitivity)
-        print(f"pos1 = [{pos[0]}, {pos[1]}, {pos[2]}]")
-        pos2 = w.cameraPosition()
-        print(f"pos2 = [{pos2[0]}, {pos2[1]}, {pos2[2]}]")
-        w.setCameraPosition(pos=pos)
-        pos3 = convert_pos1_to_pos2(pos)
-        print(f"pos3 = [{pos3[0]}, {pos3[1]}, {pos3[2]}]")
+
+        pos = w.cameraPosition()
 
     if event.buttons() == QtCore.Qt.LeftButton:
         dx = event.pos().x() - last_pos.x()
@@ -84,20 +80,23 @@ def myMouseMoveEvent(event):
 
     last_pos = event.pos()
 
-def convert_pos1_to_pos2(pos1):
-    # Get the camera's transformation matrix
-    tr = w.cameraTransform()
+def calculate_pos2(pos1, azimuth, elevation, distance):
+    # Convert azimuth and elevation to radians
+    azimuth_rad = np.radians(azimuth)
+    elevation_rad = np.radians(elevation)
 
-    # Convert pos1 to a QVector3D object
-    pos1_qvector = QtGui.QVector3D(*pos1)
+    # Calculate the direction vector
+    direction = np.array([
+        np.cos(azimuth_rad) * np.cos(elevation_rad),
+        np.sin(azimuth_rad) * np.cos(elevation_rad),
+        np.sin(elevation_rad)
+    ])
 
-    # Apply the transformation matrix to pos1
-    pos2_qvector = tr.map(pos1_qvector)
-
-    # Convert the result back to a list
-    pos2 = [pos2_qvector.x(), pos2_qvector.y(), pos2_qvector.z()]
-
+    # Calculate the new camera position by adding the direction vector
+    pos2 = pos1 + distance * direction
+    pos2 = QtGui.QVector3D(pos2[0],pos2[1], pos2[2])
     return pos2
+
 def myWheelEvent(event):
     oldMouseWheelEvent(event)
     global pos, distance
