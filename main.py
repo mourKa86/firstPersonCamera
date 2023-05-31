@@ -24,8 +24,8 @@ pos.setX(0)
 pos.setY(0)
 pos.setZ(0)
 distance = 10
-elevation = 30
-azimuth = 45
+elevation = 0
+azimuth = 0
 
 # Set camera parameters
 w.setCameraPosition(distance=distance, elevation=elevation, azimuth=azimuth)
@@ -65,8 +65,6 @@ def myMouseMoveEvent(event):
         pos.setX(pos.x() - dx * sensitivity)
         pos.setY(pos.y() + dy * sensitivity)
 
-        pos = w.cameraPosition()
-
     if event.buttons() == QtCore.Qt.LeftButton:
         dx = event.pos().x() - last_pos.x()
         dy = event.pos().y() - last_pos.y()
@@ -75,27 +73,9 @@ def myMouseMoveEvent(event):
         elevation += dy * sensitivity
         w.setCameraPosition(elevation=elevation, azimuth=azimuth)
 
-
     update_values()
 
     last_pos = event.pos()
-
-def calculate_pos2(pos1, azimuth, elevation, distance):
-    # Convert azimuth and elevation to radians
-    azimuth_rad = np.radians(azimuth)
-    elevation_rad = np.radians(elevation)
-
-    # Calculate the direction vector
-    direction = np.array([
-        np.cos(azimuth_rad) * np.cos(elevation_rad),
-        np.sin(azimuth_rad) * np.cos(elevation_rad),
-        np.sin(elevation_rad)
-    ])
-
-    # Calculate the new camera position by adding the direction vector
-    pos2 = pos1 + distance * direction
-    pos2 = QtGui.QVector3D(pos2[0],pos2[1], pos2[2])
-    return pos2
 
 def myWheelEvent(event):
     oldMouseWheelEvent(event)
@@ -115,6 +95,27 @@ def myWheelEvent(event):
     w.setCameraPosition(distance=distance)
     update_values()
 
+
+def calculate_absolute_pos(relative_pos, azimuth, elevation):
+    # Calculate the rotation matrix
+    rotation_matrix = np.array([
+        [np.cos(np.radians(azimuth)), -np.sin(np.radians(azimuth)), 0],
+        [np.sin(np.radians(azimuth)), np.cos(np.radians(azimuth)), 0],
+        [0, 0, 1]
+    ])
+
+    # Calculate the translation vector
+    translation_vector = np.array([
+        0.1 * np.cos(np.radians(elevation)) * np.cos(np.radians(azimuth)),
+        0.1 * np.cos(np.radians(elevation)) * np.sin(np.radians(azimuth)),
+        0.1 * np.sin(np.radians(elevation))
+    ])
+
+    # Calculate the absolute position
+    absolute_pos = np.dot(rotation_matrix, relative_pos) + translation_vector
+
+    return absolute_pos
+
 def myKeyPressEvent(event):
     oldKeyPressEvent(event)
 
@@ -123,14 +124,11 @@ def myKeyPressEvent(event):
     # Distance step for movement
     distance_step = 0.2
 
-    # Angle step for rotation
-    angle_step = 1
 
     # Check the key that was pressed
     key = event.key()
     if key == QtCore.Qt.Key_W:
         # Move forward
-        # print(f"pos2 = [{pos[0]}, {pos[1]}, {pos[2]}]")
         pos.setX(pos.x() - distance_step * np.cos(np.radians(azimuth)))
         pos.setY(pos.y() - distance_step * np.sin(np.radians(azimuth)))
         w.setCameraPosition(pos=pos)
@@ -142,13 +140,11 @@ def myKeyPressEvent(event):
         pos.setY(pos.y() + distance_step * np.sin(np.radians(azimuth)))
         w.setCameraPosition(pos=pos)
 
-
     elif key == QtCore.Qt.Key_A:
         # Move left
         pos.setX(pos.x() + distance_step * np.sin(np.radians(azimuth)))
         pos.setY(pos.y() - distance_step * np.cos(np.radians(azimuth)))
         w.setCameraPosition(pos=pos)
-
 
     elif key == QtCore.Qt.Key_D:
         # Move right
@@ -160,40 +156,30 @@ def myKeyPressEvent(event):
         # Move up
         distance += distance_step
         pos.setZ(distance)
+        w.setCameraPosition(pos=pos)
 
     elif key == QtCore.Qt.Key_C:
         # Move down
         distance -= distance_step
         pos.setZ(distance)
-        # Update the camera position
-        w.setCameraPosition(distance=distance)
+        w.setCameraPosition(pos=pos)
 
     elif key == QtCore.Qt.Key_Left:
         # Rotate left
-        azimuth -= angle_step
-        azimuth %= 360
-        # Update the camera position
-
+        azimuth = w.cameraParams()['azimuth']
 
     elif key == QtCore.Qt.Key_Right:
         # Rotate right
-        azimuth += angle_step
-        azimuth %= 360
-        # Update the camera position
-
+        azimuth = w.cameraParams()['azimuth']
 
     elif key == QtCore.Qt.Key_Up:
         # Rotate up
-        elevation += angle_step
-        elevation = min(elevation, 90)
-        # Update the camera position
-
+        elevation = w.cameraParams()['elevation']
 
     elif key == QtCore.Qt.Key_Down:
         # Rotate down
-        elevation -= angle_step
-        elevation = max(elevation, -90)
-        # Update the camera position
+        elevation = w.cameraParams()['elevation']
+
 
     # Update displayed values
     update_values()
